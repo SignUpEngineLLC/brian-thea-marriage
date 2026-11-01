@@ -1,0 +1,4 @@
+# Page originals and the password. Never publish these.
+_private/
+worker/node_modules/
+worker/.wrangler/

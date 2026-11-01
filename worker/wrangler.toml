@@ -1,0 +1,19 @@
+# Cloudflare Worker that stores the checklist state (encrypted in the browser). See ../README.md.
+name = "brian-thea-sync"
+main = "src/index.js"
+compatibility_date = "2025-10-01"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGINS = "https://signupenginellc.github.io"
+
+# Secret, set with `npx.cmd wrangler secret put TOKEN_HASH` (never in this file, the repo is public):
+#   TOKEN_HASH   SHA-256 hex of the sync token; `uv run build.py --token-hash` prints it
+
+[[durable_objects.bindings]]
+name = "STATE"
+class_name = "SyncState"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SyncState"]
