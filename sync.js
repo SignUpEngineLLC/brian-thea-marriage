@@ -149,7 +149,7 @@
         if (res.status === 200) { version = res.body.v; persist(); break; }
         // 409: someone else saved first. Their state comes back; merge it and try again.
       }
-      status("✓ Saved. Brian and Thea both see this.", "ok");
+      status("✓ Saved for both of you", "ok");
     } catch (e) {
       if (e instanceof Problem) status(e.message, "warn");
       else status(navigator.onLine === false
