@@ -74,15 +74,28 @@
       // Never replace text someone is in the middle of typing.
       if (document.activeElement !== a && a.value !== v) a.value = v;
     });
+    listeners.forEach(function (fn) { try { fn(); } catch (e) {} });
   }
 
+  var canSync = !!(rawKey && window.crypto && crypto.subtle && window.fetch);
   var timer = null;
   function changed(delay) {
     persist();
+    if (!canSync) return;
     status("Saving…");
     clearTimeout(timer);
     timer = setTimeout(sync, delay);
   }
+
+  // For page scripts that save something other than a form field (e.g. translation fixes).
+  // A page registers with: (window.btmSyncReady = window.btmSyncReady || []).push(function (api) {...})
+  var listeners = [];
+  var api = {
+    get: function (id) { var e = state.c[id]; return e ? e.v : undefined; },
+    set: function (id, v) { state.c[id] = { v: v, t: Date.now() }; changed(300); render(); },
+    keys: function () { return Object.keys(state.c); },
+    onChange: function (fn) { listeners.push(fn); },
+  };
   boxes.forEach(function (b) {
     b.addEventListener("change", function () {
       state.c[b.dataset.id] = { v: b.checked, t: Date.now() };
@@ -94,8 +107,10 @@
     a.addEventListener("blur", function () { clearTimeout(timer); sync(); });
   });
   render();
+  window.btmSync = api;
+  (window.btmSyncReady || []).forEach(function (fn) { try { fn(api); } catch (e) {} });
 
-  if (!rawKey || !window.crypto || !crypto.subtle || !window.fetch) {
+  if (!canSync) {
     status("Saved on this device only. Reopen the page and enter the password to share.", "warn");
     return;
   }

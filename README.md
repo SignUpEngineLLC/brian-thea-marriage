@@ -10,6 +10,7 @@ Built the same way as SignUpEngine Reports: the readable pages never reach this 
 ```
 site.json                       the pages, and the sync Worker's URL
 build.py                        builds the site: uv run build.py
+fixes.py                        lists translation fixes saved on the live page: uv run fixes.py
 sync.js                         saves and shares checkboxes and notes (inlined into every page)
 <slug>/index.html               one locked page (generated, don't edit)
 worker/                         Cloudflare Worker that stores the shared checklist state
@@ -46,6 +47,14 @@ every 20 seconds and when it comes back into view.
 - Offline changes stay on the device and sync when the connection comes back.
 - The Worker only answers requests with a token derived from the page key. It keeps the token's
   SHA-256 hash in the `TOKEN_HASH` secret.
+
+### Translations and fixes
+
+The LCR page switches between English, Hiligaynon and Tagalog (`.en` / `.hil` / `.tl` spans). In
+Hiligaynon or Tagalog view, "✏️ Fix translations" adds a Fix button under each line; a saved fix
+replaces the draft for everyone and is stored in the shared state as `tr:<lang>:<key>`.
+`uv run fixes.py` lists the saved fixes (plus the visit notes and what's checked) so they can be
+copied into `_private/sources/` and made permanent.
 
 ### Changing the password
 
