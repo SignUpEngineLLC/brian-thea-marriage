@@ -1,7 +1,7 @@
-// Saves the page's checkboxes and notes, and shares them between everyone who has the password.
+// Saves the page's checkboxes and text boxes, and shares them between everyone who has the password.
 // build.py inlines this into each page before encrypting it, filling in {{SYNC_URL}}.
 //
-// Each checkbox and the notes box need a data-id. Every change is stamped with its time, so two
+// Each checkbox and textarea needs a data-id. Every change is stamped with its time, so two
 // people editing at once both keep their changes: the newer stamp wins per item. The state is
 // encrypted here with the key from the password page before it leaves the device; it is also
 // kept on the device, so changes made offline sync once the phone is back online.
@@ -23,7 +23,7 @@
   // Cache next to the key: "Remember on this device" off means nothing stays after the tab closes.
   var cache = get(local, KEY_NAME) ? local : session;
   var boxes = [].slice.call(document.querySelectorAll("input[type=checkbox][data-id]"));
-  var notes = document.querySelector("textarea[data-id]");
+  var areas = [].slice.call(document.querySelectorAll("textarea[data-id]"));
 
   var css = document.createElement("style");
   css.textContent =
@@ -39,14 +39,18 @@
   document.body.appendChild(pill);
   function status(text, kind) { pill.textContent = text; pill.className = kind || ""; }
 
-  function empty() { return { c: {}, n: { v: "", t: 0 } }; }
+  // State: {c: {<data-id>: {v, t}}}; v is true/false for a checkbox, text for a textarea.
+  function empty() { return { c: {} }; }
   function clean(s) {
     s = s && typeof s === "object" ? s : {};
-    return { c: s.c && typeof s.c === "object" ? s.c : {}, n: s.n && typeof s.n.v === "string" ? s.n : { v: "", t: 0 } };
+    var c = s.c && typeof s.c === "object" ? s.c : {};
+    // The first version kept the notes box apart, in s.n.
+    if (s.n && typeof s.n.v === "string" && s.n.t && !(c.notes && c.notes.t >= s.n.t)) c.notes = s.n;
+    return { c: c };
   }
   // Newer stamp wins, item by item.
   function merge(a, b) {
-    var out = { c: {}, n: b.n.t > a.n.t ? b.n : a.n };
+    var out = { c: {} };
     [a.c, b.c].forEach(function (src) {
       Object.keys(src).forEach(function (id) { if (!out.c[id] || src[id].t > out.c[id].t) out.c[id] = src[id]; });
     });
@@ -54,7 +58,6 @@
   }
   // Does a hold anything b hasn't seen?
   function ahead(a, b) {
-    if (a.n.t > b.n.t) return true;
     return Object.keys(a.c).some(function (id) { return !b.c[id] || a.c[id].t > b.c[id].t; });
   }
 
@@ -66,8 +69,11 @@
 
   function render() {
     boxes.forEach(function (b) { var e = state.c[b.dataset.id]; b.checked = !!(e && e.v); });
-    // Never replace text someone is in the middle of typing.
-    if (notes && document.activeElement !== notes && notes.value !== state.n.v) notes.value = state.n.v;
+    areas.forEach(function (a) {
+      var e = state.c[a.dataset.id], v = e && typeof e.v === "string" ? e.v : "";
+      // Never replace text someone is in the middle of typing.
+      if (document.activeElement !== a && a.value !== v) a.value = v;
+    });
   }
 
   var timer = null;
@@ -83,10 +89,10 @@
       changed(300);
     });
   });
-  if (notes) {
-    notes.addEventListener("input", function () { state.n = { v: notes.value, t: Date.now() }; changed(1200); });
-    notes.addEventListener("blur", function () { clearTimeout(timer); sync(); });
-  }
+  areas.forEach(function (a) {
+    a.addEventListener("input", function () { state.c[a.dataset.id] = { v: a.value, t: Date.now() }; changed(1200); });
+    a.addEventListener("blur", function () { clearTimeout(timer); sync(); });
+  });
   render();
 
   if (!rawKey || !window.crypto || !crypto.subtle || !window.fetch) {
